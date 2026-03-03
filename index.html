@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MYTIME – 대학 시간표의 새로운 기준</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
   <meta name="description" content="에브리타임 연동, 위젯 모드, 과제 알림까지! 대학 생활을 더 편리하게 만들어주는 올인원 데스크톱 시간표 도구 MYTIME을 만나보세요.">
   <meta name="keywords" content="MYTIME, 마이타임, 대학 시간표, 시간표 앱, 에브리타임 연동, 시간표 위젯, 과제 알림, 대학생 필수앱">
 
@@ -13,14 +14,14 @@
   <meta property="og:url" content="https://difficcd.github.io/mytime/">
   <meta property="og:title" content="MYTIME – 대학 시간표의 새로운 기준">
   <meta property="og:description" content="데스크톱에서 완성하는 올인원 캠퍼스 도구. 지금 무료로 다운로드하세요.">
-  <meta property="og:image" content="https://difficcd.github.io/mytime/og-image.png">
+  <meta property="og:image" content="https://difficcd.github.io/mytime/logo.png">
 
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image">
   <meta property="twitter:url" content="https://difficcd.github.io/mytime/">
   <meta property="twitter:title" content="MYTIME – 대학 시간표의 새로운 기준">
   <meta property="twitter:description" content="데스크톱에서 완성하는 올인원 캠퍼스 도구. 지금 무료로 다운로드하세요.">
-  <meta property="twitter:image" content="https://difficcd.github.io/mytime/og-image.png">
+  <meta property="twitter:image" content="https://difficcd.github.io/mytime/logo.png">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
   <link rel="stylesheet"
     href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
@@ -130,10 +131,19 @@
     }
 
     .nav-logo {
-      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
       font-weight: 900;
-      letter-spacing: 5px;
-      color: var(--b0)
+      letter-spacing: 2px;
+      color: var(--b0);
+      text-decoration: none
+    }
+
+    .nav-logo img {
+      height: 28px;
+      width: auto
     }
 
     .nav-links {
@@ -1474,7 +1484,10 @@
 
   <!-- ══ NAV ══════════════════════════════════════════════ -->
   <nav>
-    <span class="nav-logo">MYTIME</span>
+    <a href="#" class="nav-logo">
+      <img src="logo.svg" alt="Logo">
+      <span>MYTIME</span>
+    </a>
     <ul class="nav-links">
       <li><a href="#download">다운로드</a></li>
       <li><a href="#features">기능</a></li>
@@ -2012,7 +2025,8 @@
         <div class="dl-name">설치 마법사</div>
         <p class="dl-desc">전통적인 설치 방식. 바탕화면 · 시작 메뉴 단축키가 자동 생성되고, 제어판에서 깔끔하게 제거할 수 있습니다.</p>
         <p class="dl-meta"><strong>~77 MB</strong> &nbsp;·&nbsp; <strong>Windows x64</strong> &nbsp;·&nbsp;
-          <strong>v1.0.0</strong></p>
+          <strong>v1.0.0</strong>
+        </p>
         <a href="MYTIME_Setup_v1.0.0.exe" download class="dl-btn btn-blue">
           <svg viewBox="0 0 24 24">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
@@ -2035,7 +2049,8 @@
         <div class="dl-name">포터블</div>
         <p class="dl-desc">설치 없이 파일 하나로 바로 실행. 레지스트리를 건드리지 않으며 USB · 클라우드 드라이브에서 이동해 사용 가능합니다.</p>
         <p class="dl-meta"><strong>~70 MB</strong> &nbsp;·&nbsp; <strong>Windows x64</strong> &nbsp;·&nbsp;
-          <strong>v1.0.0</strong></p>
+          <strong>v1.0.0</strong>
+        </p>
         <a href="MYTIME_Portable_v1.0.0.exe" download class="dl-btn btn-line">
           <svg viewBox="0 0 24 24">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
@@ -2154,7 +2169,10 @@
 
   <!-- ══ FOOTER ════════════════════════════════════════ -->
   <footer>
-    <span class="foot-logo">MYTIME</span>
+    <div class="nav-logo" style="color:var(--b3)">
+      <img src="logo.svg" alt="Logo" style="filter: brightness(0) invert(1) opacity(0.8);">
+      <span>MYTIME</span>
+    </div>
     <p class="foot-note">
       © 2026 MYTIME &nbsp;·&nbsp; Windows PC 전용 &nbsp;·&nbsp; v1.0.0<br>
       <span style="color:#3f3f46">문의 및 버그 리포트: </span>
