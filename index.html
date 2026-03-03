@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MYTIME – 대학 시간표의 새로운 기준</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+    :root{
+      --b0:#4a7ab8; --b1:#5d8fc0; --b2:#7aa5cb; --b3:#94bbd7;
+      --b4:#aac4d8; --b5:#c8d8e4; --b6:#dce8f0; --b7:#eef5fa; --b8:#f4f9fc;
+
+      /*
+        Course block colours – computed from App.jsx generateAndApplyPalette()
+        themeColor=#2e5bff → h≈227 s=100 l=59
+        themeStrong: adjustedS=min(100,45)=45, adjustedL(59>45→50)=50
+          → hslToHex(227,45,50) ≈ #4661b9
+        palette: actualCount=max(5,7)=7, totalVariants=7, step=i/8
+          i=0 s=50 L_even=max(15,59-0)=59   → hsl(227,50%,59%) #6279cb  text=white
+          i=1 s=50 L_odd =min(92,59+6.25)=65 → hsl(227,50%,65%) #798cd2  text=black
+          i=2 s=50 L_even=max(15,59-12.5)=47 → hsl(227,50%,47%) #3c56b4  text=white
+          i=3 s=50 L_odd =min(92,59+18.75)=78 → hsl(227,50%,78%) #abb7e3 text=black
+          i=4 s=50 L_even=max(15,59-25)=34   → hsl(227,50%,34%) #2b3e83  text=white
+        themeDesaturated = hslToHex(227, max(0,45-45)=0, 50) = #808080
+        themeChecked     = hslToHex(227, 0, min(96,max(88,70)))=88 = #e0e0e0
+      */
+      --c0bg:#6279cb; --c0txt:#ffffff;  /* 미시경제학  hsl(227,50%,59%) */
+      --c1bg:#798cd2; --c1txt:#111111;  /* 거시경제학  hsl(227,50%,65%) */
+      --c2bg:#3c56b4; --c2txt:#ffffff;  /* 계량경제학  hsl(227,50%,47%) */
+      --c3bg:#abb7e3; --c3txt:#111111;  /* 경제수학    hsl(227,50%,78%) */
+      --c4bg:#2b3e83; --c4txt:#ffffff;  /* 화폐금융론  hsl(227,50%,34%) */
+      --theme-strong:#4661b9;           /* themeStrong */
+      --theme-desat:#808080;            /* themeDesaturated (s→0) */
+      --theme-checked:#e0e0e0;          /* themeChecked */
+
+      --z9:#18181b;--z7:#3f3f46;--z6:#52525b;--z5:#71717a;
+      --z4:#a1a1aa;--z3:#d4d4d8;--z2:#e4e4e7;--z1:#f4f4f5;--z0:#fafafa;
+
+      --shadow-card:0 2px 16px rgba(0,0,0,.07);
+      --shadow-btn: 0 4px 24px rgba(74,122,184,.28);
+      --r-xl:20px;--r-lg:14px;
+
+      /* Exact gray-100 from Tailwind used in timetable grid */
+      --gray-50: rgba(249,250,251,.8);
+      --gray-100: #f3f4f6;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+    }
+
+    html{scroll-behavior:smooth}
+    body{font-family:'Pretendard',-apple-system,'Segoe UI',sans-serif;background:#fff;color:var(--z9);-webkit-font-smoothing:antialiased}
+
+    /* ════ NAV ════════════════════════════════════════ */
+    nav{
+      position:sticky;top:0;z-index:100;
+      background:rgba(255,255,255,.9);backdrop-filter:blur(12px);
+      border-bottom:1px solid var(--z1);
+      display:flex;align-items:center;justify-content:space-between;
+      padding:0 48px;height:56px;
+    }
+    .nav-logo{font-size:14px;font-weight:900;letter-spacing:5px;color:var(--b0)}
+    .nav-links{display:flex;gap:32px;list-style:none}
+    .nav-links a{font-size:13px;font-weight:600;color:var(--z5);text-decoration:none;transition:color .15s}
+    .nav-links a:hover{color:var(--b0)}
+
+    /* ════ HERO ═══════════════════════════════════════ */
+    .hero{padding:72px 48px 56px;text-align:center;background:linear-gradient(180deg,#fff 60%,var(--b8) 100%)}
+    .hero-badge{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:5px 14px;border-radius:99px;
+      background:var(--b7);border:1px solid var(--b6);
+      font-size:11px;font-weight:800;letter-spacing:1.5px;
+      color:var(--b0);text-transform:uppercase;margin-bottom:20px;
+    }
+    .hero-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--b0);animation:pulse 1.8s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.7)}}
+    h1{font-size:clamp(26px,4.5vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:12px}
+    h1 .grad{background:linear-gradient(90deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .hero-sub{font-size:15px;font-weight:500;color:var(--z4);line-height:1.7}
+    .hero-plat{display:flex;align-items:center;justify-content:center;gap:8px;margin:18px 0 36px}
+    .plat-tag{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:99px;background:var(--z0);border:1px solid var(--z2);font-size:11px;font-weight:700;color:var(--z5)}
+
+    /* ════════════════════════════════════════════════════
+       APP MOCKUP  –  648 × 650 px (real Electron window)
+       Source: electron/main.js  NORMAL_W=648 NORMAL_H=650
+       frame:false transparent:true → custom rounded window
+
+       Layout from App.jsx:
+         header: drag-area px-6 py-3 → ~54px tall
+         content: flex-1 flex px-6 gap-6
+           main: flex-1 min-w-0 pt-3 pb-3
+             timetable: h-full rounded-xl shadow-sm border border-gray-100
+               header row: 35px  (gridTemplateRows)
+               body: 537px (572-35) for 480 min → 67px/hr
+         blocks: m-[0.5px] mx-1 rounded-lg p-1.5
+    ════════════════════════════════════════════════════ */
+    .mockup-wrap{
+      width:860px;
+      max-width:calc(100% - 24px);
+      height:580px;
+      margin:0 auto;
+      /* app-container CSS: border-radius 12px, box-shadow, border */
+      border-radius:12px;
+      border:1px solid rgba(200,210,228,.7);
+      box-shadow:0 10px 40px rgba(0,0,0,.15);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      font-family:'Pretendard',sans-serif;
+      background:rgba(255,255,255,.94);
+      text-align:left;
+    }
+
+    /* ── Titlebar: px-6 py-3 = 24px H, 12px V → h≈54px with 30px buttons ── */
+    .tbar{
+      height:54px;
+      display:flex;align-items:center;justify-content:space-between;
+      /* px-6=24px, but we also have ml-1.5 mr-1 on controls side */
+      padding:0 14px 0 24px;
+      border-bottom:1px solid var(--gray-100);
+      flex-shrink:0;
+      background:rgba(255,255,255,.96);
+    }
+
+    /* Left: gap-3 = 12px */
+    .tbar-l{display:flex;align-items:center;gap:12px;overflow:hidden}
+
+    /* Hamburger: w-5 h-5 = 20px, fill-zinc-400 */
+    .tbar-ham{
+      width:20px;height:20px;
+      display:flex;align-items:center;justify-content:center;
+      background:transparent;border:none;padding:0;cursor:pointer;
+      border-radius:6px;
+      flex-shrink:0;
+    }
+    .tbar-ham svg{width:20px;height:20px;fill:#a1a1aa}
+
+    .tbar-tgroup{display:flex;flex-direction:column}
+    .tbar-trow{display:flex;align-items:center;gap:6px}
+    /* text-xl font-black tracking-tighter = 20px */
+    .tbar-title{
+      font-size:20px;font-weight:900;
+      letter-spacing:-0.05em;
+      white-space:nowrap;
+      color:var(--b0);
+    }
+    /* Edit btn: w-3 h-3 = 12px */
+    .tbar-edit{
+      display:flex;align-items:center;
+      background:transparent;border:none;padding:4px;
+      border-radius:6px;cursor:pointer;color:var(--b0);opacity:.7;
+    }
+    .tbar-edit svg{width:12px;height:12px;fill:currentColor}
+    /* PIN: text-[9px] px-1.5 py-0.5 */
+    .tbar-pin{
+      font-size:9px;font-weight:700;
+      padding:2px 6px;border-radius:4px;
+      background:#f4f4f5;color:#a1a1aa;
+    }
+    /* Date: text-[10px] text-zinc-500 font-bold mt-0.5 */
+    .tbar-date{font-size:10px;font-weight:700;color:#71717a;margin-top:2px}
+
+    /* Right: gap-3 = 12px */
+    .tbar-r{display:flex;align-items:center;gap:12px;flex-shrink:0}
+
+    /* Base button: h-[30px] px-2.5 rounded-lg text-[9px] font-bold */
+    .tbtn{
+      font-size:9px;font-weight:700;
+      height:30px;padding:0 10px;
+      border-radius:8px;
+      display:flex;align-items:center;justify-content:center;gap:4px;
+      white-space:nowrap;border:none;cursor:default;
+      flex-shrink:0;
+    }
+    .tb-reset{background:#fff;border:1px solid #e4e4e7;color:#a1a1aa}
+    /* AUTO ON: themeColor background = --b0 */
+    .tb-auto {background:var(--b0);color:#fff;border:1px solid transparent}
+    /* Settings: h-[30px] w-[30px] = 30px square */
+    .tb-set  {background:#fff;border:1px solid #e4e4e7;color:#9ca3af;width:30px;padding:0;font-size:14px}
+    /* SYNC: bg-zinc-800 text-white px-3.5 py-1.5 text-[10px] font-bold shadow-md */
+    .tb-sync {background:#18181b;color:#fff;font-size:10px;font-weight:700;padding:0 14px;height:auto;min-height:30px;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+    /* MINI: text-[9px] font-black h-[30px] */
+    .tb-mini {background:#fff;border:1px solid #e4e4e7;color:#a1a1aa;font-weight:900}
+    /* Window controls: ml-1.5=6px gap-3=12px w-3=12px h-3=12px */
+    .tbar-ctrls{display:flex;align-items:center;gap:12px;margin-left:6px;margin-right:4px}
+    .tbar-ctrl{width:12px;height:12px;border-radius:50%;display:block;flex-shrink:0}
+
+    /* ── Content: flex-1 flex px-6 gap-6 ──────────────── */
+    /* px-6=24px each side, gap-6=24px between panes      */
+    /* showSidebar=true → sidebar open                    */
+    .win-body{
+      flex:1;
+      display:flex;
+      gap:24px;           /* gap-6 = 24px between main and sidebar */
+      padding:12px 24px;  /* pt-3 pb-3 px-6 */
+      overflow:hidden;
+    }
+
+    /* Main: flex-1 min-w-0 pt-3 pb-3 → already included in win-body padding */
+    .win-main{flex:1;min-width:0;overflow:hidden;display:flex;flex-direction:column}
+
+    /* ── Sidebar: w-[260px] my-3 rounded-3xl border bg-zinc-50/90 ─── */
+    /* border-zinc-200 shadow-[0_0_40px_rgba(0,0,0,0.05)] backdrop-blur-md */
+    .win-sidebar{
+      width:260px;
+      margin:12px 0;          /* my-3 */
+      border-radius:24px;     /* rounded-3xl */
+      border:1px solid #e4e4e7;
+      background:rgba(250,250,250,.9);
+      box-shadow:0 0 40px rgba(0,0,0,.05);
+      backdrop-filter:blur(12px);
+      flex-shrink:0;
+      overflow:hidden;
+      display:flex;flex-direction:column;
+      align-self:flex-start;  /* 콘텐츠 높이만큼만 차지, 세로 늘림 방지 */
+    }
+    /* Inner: p-4 flex flex-col gap-6 – height:auto (스크롤바 방지) */
+    .win-sb-inner{
+      padding:16px;
+      display:flex;flex-direction:column;gap:20px;
+    }
+    /* Cards: p-4 rounded-2xl border bg-white border-zinc-200 shadow-sm */
+    .sb-card{padding:14px;border-radius:16px;border:1px solid #e4e4e7;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column}
+    /* flex-1 제거 → 자연 높이로 표시 */
+    .sb-card-flex{padding:14px;border-radius:16px;border:1px solid #e4e4e7;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column}
+    /* Card header: text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] */
+    .sb-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .sb-head-lbl{font-size:10px;font-weight:900;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.2em}
+    /* Count badge: w-4 h-4 rounded-full bg-zinc-800 text-[8px] font-black text-white */
+    .sb-badge{width:16px;height:16px;border-radius:50%;background:#18181b;color:#fff;font-size:8px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    /* Input row – no margin-bottom (wrapper gap handles spacing) */
+    .sb-inp-row{display:flex;gap:6px}
+    .sb-inp{flex:1;padding:6px 10px;border-radius:10px;font-size:10px;font-weight:700;background:#f4f4f5;color:#a1a1aa;border:none;outline:none;font-family:inherit}
+    .sb-add{padding:6px 7px;border-radius:10px;background:#18181b;color:#fff;border:none;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    /* Date row: h-[25px] – no margin-bottom */
+    .sb-date-row{display:flex;gap:4px;height:25px}
+    /* flex-1 h-full px-2 rounded-lg text-[9px] font-bold border items-center justify-between */
+    .sb-date-btn{flex:1;height:100%;padding:0 8px;border-radius:8px;font-size:9px;font-weight:700;border:1px solid #e4e4e7;background:transparent;color:#71717a;font-family:inherit;display:flex;align-items:center;justify-content:space-between;cursor:default}
+    .sb-bell-btn{width:28px;height:100%;flex-shrink:0;border-radius:8px;font-size:9px;border:1px solid #e4e4e7;background:#fff;color:#71717a;display:flex;align-items:center;justify-content:center;cursor:default}
+    /* Tasks: max-h-[150px] overflow-y-auto */
+    .sb-tasks{display:flex;flex-direction:column;max-height:150px;overflow-y:auto}
+    /* task row: flex items-start gap-2.5 py-1 border-b border-dashed border-zinc-100 last:border-0 pb-2 */
+    .sb-task{display:flex;align-items:flex-start;gap:10px;padding:4px 0 8px;border-bottom:1px dashed #f4f4f5}
+    .sb-task:last-child{border-bottom:none;padding-bottom:4px}
+    /* Checkbox: w-3.5 h-3.5 rounded-md flex items-center justify-center */
+    .sb-chk{width:14px;height:14px;border-radius:4px;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center}
+    .sb-chk.todo{border:1.5px solid #d4d4d8;background:#fff}
+    /* done: themeChecked bg + white checkmark svg */
+    .sb-chk.done{background:var(--theme-checked);border:1.5px solid var(--theme-checked);box-shadow:0 1px 3px rgba(70,97,185,.13)}
+    /* task body: flex-col gap-0.5 */
+    .sb-task-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+    /* text-[10px] font-bold leading-tight break-all */
+    .sb-task-txt{font-size:10px;font-weight:700;line-height:1.3;word-break:break-all}
+    .sb-task-txt.todo{color:#3f3f46}
+    .sb-task-txt.done{color:#a1a1aa}
+    /* meta row: flex items-center gap-1 */
+    .sb-task-meta{display:flex;align-items:center;gap:4px}
+    /* D-day: text-[8px] font-mono font-black */
+    .sb-dday{font-size:8px;font-weight:900;font-family:monospace;line-height:1}
+    /* deadline date: text-[8px] font-mono opacity-50 */
+    .sb-task-time{font-size:8px;font-weight:700;font-family:monospace;opacity:.5;line-height:1}
+    /* Memo items: p-3 rounded-xl border border-dashed bg-zinc-50/50 border-zinc-200 */
+    .sb-memos{display:flex;flex-direction:column;gap:6px}
+    .sb-memo{padding:12px;border-radius:10px;border:1px dashed #e4e4e7;background:rgba(250,250,250,.5)}
+    /* memo header: flex justify-between items-start mb-2 */
+    .sb-memo-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+    /* Memo title: text-[9px] font-black uppercase tracking-tight color=themeDesaturated */
+    .sb-memo-ttl{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:-0.02em}
+    /* edit/delete buttons container */
+    .sb-memo-acts{display:flex;gap:2px;flex-shrink:0}
+    /* p-1 rounded-lg text-zinc-400 hover:bg-zinc-200 */
+    .sb-memo-btn{padding:2px;border-radius:6px;background:transparent;border:none;display:flex;align-items:center;justify-content:center;cursor:default}
+    /* Memo text: text-[10px] font-bold leading-relaxed break-words line-clamp-3 text-zinc-600 */
+    .sb-memo-txt{font-size:10px;font-weight:700;line-height:1.5;color:#52525b;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+
+    /* Timetable container: h-full w-full rounded-xl shadow-sm border border-gray-100 */
+    .tt-wrap{
+      flex:1;
+      border-radius:12px;   /* rounded-xl */
+      border:1px solid var(--gray-100);
+      box-shadow:0 1px 2px rgba(0,0,0,.05); /* shadow-sm */
+      background:#fff;
+      overflow:hidden;
+      display:flex;flex-direction:column;
+    }
+
+    /* Header row: 35px, bg-gray-50/80 */
+    .tt-head{
+      display:flex;height:35px;flex-shrink:0;
+      background:var(--gray-50);
+      border-bottom:1px solid var(--gray-100);
+    }
+    /* TIME label: text-[10px] font-black text-gray-400 */
+    .tt-head-time{
+      width:40px;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;
+      font-size:10px;font-weight:900;color:var(--gray-400);
+      border-right:1px solid var(--gray-100);
+    }
+    /* Day labels: text-[10px] font-black text-gray-700 */
+    .tt-head-day{
+      flex:1;
+      display:flex;align-items:center;justify-content:center;
+      font-size:10px;font-weight:900;color:var(--gray-700);
+      border-right:1px solid var(--gray-100);
+    }
+    .tt-head-day:last-child{border-right:none}
+
+    /* Grid body */
+    .tt-body{display:flex;flex:1;overflow:hidden}
+
+    /* Time column: font-mono font-bold text-[10px] text-gray-500 pt-1 */
+    .tt-time-col{
+      width:40px;flex-shrink:0;
+      border-right:1px solid #f9fafb; /* border-gray-50 */
+      display:flex;flex-direction:column;
+    }
+    .tt-time-cell{
+      height:67px;flex-shrink:0;
+      display:flex;align-items:flex-start;justify-content:center;
+      padding-top:4px; /* pt-1 */
+      font-size:10px;font-weight:700;color:var(--gray-500);
+      font-family:monospace;font-variant-numeric:tabular-nums;
+      border-bottom:1px solid var(--gray-100);
+    }
+    .tt-time-cell:last-child{border-bottom:none}
+
+    /* 5-day absolute area */
+    .tt-dayarea{
+      flex:1;position:relative;
+      /* horizontal grid lines every 67px (=1 hour) */
+      background-image:repeating-linear-gradient(
+        to bottom,
+        transparent 0px, transparent 66px,
+        var(--gray-100) 66px, var(--gray-100) 67px
+      );
+      height:536px;overflow:hidden;   /* 8h×67px=536px */
+    }
+    /* vertical day dividers */
+    .tt-dayarea::before{
+      content:'';position:absolute;inset:0;
+      background-image:repeating-linear-gradient(
+        to right,
+        transparent 0, transparent calc(20% - 1px),
+        var(--gray-100) calc(20% - 1px), var(--gray-100) 20%
+      );
+      pointer-events:none;z-index:0;
+    }
+
+    /*
+      Course block: m-[0.5px] mx-1 rounded-lg
+        → top/height from grid math (67px/hr)
+        → left = dayIdx*20% + 4px (mx-1)
+        → width = 20% - 8px
+      Inner: p-1.5 (6px) flex-col justify-between
+    */
+    .blk{
+      position:absolute;
+      border-radius:8px;     /* rounded-lg */
+      overflow:hidden;
+      display:flex;flex-direction:column;justify-content:space-between;
+      padding:6px;           /* p-1.5 */
+      z-index:1;
+    }
+    .blk-top{display:flex;align-items:flex-start;justify-content:space-between;gap:2px}
+    .blk-texts{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+    /* font-black text-[9px] leading-tight break-all */
+    .blk-name{font-size:9px;font-weight:900;line-height:1.25;word-break:break-all;letter-spacing:-.02em}
+    /* text-[7px] font-bold opacity-80 truncate */
+    .blk-info{font-size:7px;font-weight:700;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    /* w-3 h-3 = 12px checkbox */
+    .blk-chk{width:12px;height:12px;border-radius:2px;flex-shrink:0;border:1px solid currentColor;opacity:.35;margin-top:1px}
+    /* text-[8px] font-mono font-bold opacity-70 text-right */
+    .blk-time{font-size:8px;font-weight:700;font-variant-numeric:tabular-nums;opacity:.7;text-align:right;font-family:monospace;flex-shrink:0}
+
+    /* ════ SHARED ══════════════════════════════════════ */
+    .divider{width:40px;height:2px;background:linear-gradient(90deg,var(--b0),var(--b3));border-radius:99px;margin:0 auto 14px}
+    .sec-label{text-align:center;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--b1);margin-bottom:10px}
+    .sec-title{text-align:center;font-size:clamp(22px,3vw,34px);font-weight:900;letter-spacing:-1px;margin-bottom:9px}
+    .sec-sub{text-align:center;font-size:14.5px;font-weight:500;color:var(--z4);margin-bottom:44px}
+
+    /* ════ DOWNLOAD ════════════════════════════════════ */
+    .sec-dl{padding:76px 48px;background:var(--b8)}
+    .dl-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:740px;margin:0 auto}
+    .dl-card{
+      background:#fff;border-radius:var(--r-xl);border:1px solid var(--z2);
+      padding:32px 28px 28px;box-shadow:var(--shadow-card);
+      display:flex;flex-direction:column;position:relative;overflow:hidden;
+      transition:box-shadow .2s,transform .2s;
+    }
+    .dl-card:hover{box-shadow:0 8px 36px rgba(0,0,0,.1);transform:translateY(-2px)}
+    .dl-card.primary{border-color:var(--b0);background:linear-gradient(155deg,#fff 50%,var(--b7) 100%)}
+    .dl-card.primary::before{
+      content:'RECOMMENDED';
+      position:absolute;top:14px;right:14px;
+      font-size:8px;font-weight:900;letter-spacing:1.2px;color:var(--b0);
+      background:var(--b7);border:1px solid var(--b6);padding:3px 8px;border-radius:99px;
+    }
+    .dl-icon-box{
+      width:46px;height:46px;border-radius:13px;
+      background:var(--z1);
+      display:flex;align-items:center;justify-content:center;
+      margin-bottom:16px;color:var(--z5);
+    }
+    .dl-icon-box svg{width:22px;height:22px}
+    .dl-type{font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--z4);margin-bottom:5px}
+    .dl-name{font-size:20px;font-weight:900;letter-spacing:-.5px;margin-bottom:9px}
+    .dl-desc{font-size:13px;font-weight:500;color:var(--z5);line-height:1.65;margin-bottom:20px;flex:1}
+    .dl-meta{font-size:11.5px;font-weight:600;color:var(--z4);margin-bottom:20px}
+    .dl-meta strong{color:var(--z6)}
+    .dl-btn{
+      display:flex;align-items:center;justify-content:center;gap:7px;
+      padding:12px 20px;border-radius:11px;
+      font-size:13px;font-weight:800;text-decoration:none;
+      transition:all .15s;border:none;cursor:pointer;
+    }
+    .dl-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+    .btn-blue{background:var(--b0);color:#fff;box-shadow:var(--shadow-btn)}
+    .btn-blue:hover{background:#3d6a9e;box-shadow:0 6px 30px rgba(74,122,184,.4);transform:translateY(-1px)}
+    .btn-line{background:transparent;color:var(--z7);border:1.5px solid var(--z2)}
+    .btn-line:hover{border-color:var(--b3);background:var(--b8)}
+    .dl-ver{text-align:center;margin-top:22px;font-size:12px;color:var(--z4);font-weight:500}
+    .dl-ver strong{color:var(--z6)}
+
+    /* ════ FEATURES ════════════════════════════════════ */
+    .sec-feat{padding:80px 48px;background:#fff}
+    .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:840px;margin:0 auto 14px}
+    .feat-card{border-radius:var(--r-xl);padding:24px 20px;border:1px solid transparent}
+    .feat-card:nth-child(1){background:var(--b7);border-color:var(--b6)}
+    .feat-card:nth-child(2){background:#edf4fb;border-color:#d4e6f3}
+    .feat-card:nth-child(3){background:#e5eff8;border-color:#c8dff0}
+    .feat-icon{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;margin-bottom:13px;color:var(--z5)}
+    .feat-icon svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+    .feat-card:nth-child(1) .feat-icon{background:rgba(74,122,184,.09)}
+    .feat-card:nth-child(2) .feat-icon{background:rgba(93,143,192,.09)}
+    .feat-card:nth-child(3) .feat-icon{background:rgba(122,165,203,.09)}
+    .feat-title{font-size:16px;font-weight:900;margin-bottom:7px}
+    .feat-desc{font-size:13px;font-weight:500;color:var(--z5);line-height:1.65;margin-bottom:11px}
+    .feat-tag{display:inline-block;padding:3px 10px;border-radius:99px;font-size:8.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+    .feat-card:nth-child(1) .feat-tag{background:rgba(74,122,184,.08);color:var(--b0)}
+    .feat-card:nth-child(2) .feat-tag{background:rgba(93,143,192,.08);color:var(--b1)}
+    .feat-card:nth-child(3) .feat-tag{background:rgba(122,165,203,.08);color:var(--b2)}
+    .sub-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:840px;margin:0 auto}
+    .sub-card{background:var(--b8);border:1px solid var(--b6);border-radius:var(--r-lg);padding:17px 15px}
+    .sub-title{font-size:13px;font-weight:800;margin-bottom:5px}
+    .sub-desc{font-size:12px;font-weight:500;color:var(--z4);line-height:1.5}
+
+    /* ════ REQUIREMENTS ════════════════════════════════ */
+    .sec-req{padding:68px 48px;background:var(--b8);border-top:1px solid var(--b6)}
+    .req-table{max-width:520px;margin:0 auto;border-radius:var(--r-xl);background:#fff;border:1px solid var(--z2);overflow:hidden;box-shadow:var(--shadow-card)}
+    .req-row{display:grid;grid-template-columns:140px 1fr;padding:14px 22px;border-bottom:1px solid var(--z1);align-items:center}
+    .req-row:last-child{border-bottom:none}
+    .req-label{font-size:11px;font-weight:700;color:var(--z4);text-transform:uppercase;letter-spacing:1px}
+    .req-val{font-size:13px;font-weight:600;color:var(--z7)}
+
+    /* ════ CTA ══════════════════════════════════════════ */
+    .sec-cta{padding:76px 48px;background:#fff;text-align:center}
+    .cta-inner{max-width:460px;margin:0 auto}
+    .cta-inner h2{font-size:clamp(20px,2.8vw,30px);font-weight:900;letter-spacing:-1px;margin-bottom:9px}
+    .cta-inner p{font-size:15px;color:var(--z4);font-weight:500;margin-bottom:28px}
+    .cta-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+    /* ════ FOOTER ═══════════════════════════════════════ */
+    footer{background:var(--z9);color:#fff;padding:34px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+    .foot-logo{font-size:13px;font-weight:900;letter-spacing:5px;color:var(--b3)}
+    .foot-note{font-size:12px;color:#52525b;font-weight:500;line-height:1.6}
+    .foot-note a{color:#71717a;text-decoration:underline}
+
+    /* ════ RESPONSIVE ═══════════════════════════════════ */
+    @media(max-width:720px){
+      nav{padding:0 20px}.nav-links{display:none}
+      .hero,.sec-dl,.sec-feat,.sec-req,.sec-cta{padding-left:20px;padding-right:20px}
+      .dl-grid{grid-template-columns:1fr}
+      .feat-grid{grid-template-columns:1fr}
+      .sub-grid{grid-template-columns:1fr 1fr}
+      footer{padding:24px 20px}
+      .mockup-wrap{height:auto}
+      .win-body{height:auto}
+      .tt-dayarea{height:400px}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ NAV ══════════════════════════════════════════════ -->
+<nav>
+  <span class="nav-logo">MYTIME</span>
+  <ul class="nav-links">
+    <li><a href="#download">다운로드</a></li>
+    <li><a href="#features">기능</a></li>
+    <li><a href="#requirements">시스템 요구사항</a></li>
+  </ul>
+</nav>
+
+<!-- ══ HERO ══════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-badge">v1.0.0 &nbsp;·&nbsp; Windows</div>
+  <h1>대학 시간표의<br><span class="grad">새로운 기준.</span></h1>
+  <p class="hero-sub">에브리타임 연동 · 위젯 모드 · 과제 알림 · 출석 체크</p>
+  <p class="hero-sub">데스크톱에서 완성하는 올인원 캠퍼스 도구.</p>
+
+  <div class="hero-plat">
+    <span class="plat-tag">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="#71717a">
+        <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.549H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
+      </svg>
+      Windows 10 / 11
+    </span>
+    <span class="plat-tag" style="opacity:.4">macOS <span style="font-size:9px;color:#a1a1aa;font-weight:600">준비중</span></span>
+  </div>
+
+  <!--
+    ╔══════════════════════════════════════════════════════╗
+    ║  MYTIME  –  실제 앱 화면 재현  648 × 650 px          ║
+    ║  timetable data: DUMMY_TIMETABLE from demoData.js    ║
+    ║  theme: #2e5bff default → themeStrong ≈ #4a7ab8      ║
+    ╚══════════════════════════════════════════════════════╝
+
+    Block position math (timeRange.start=9, totalMinutes=480):
+      1 hour = 38px  |  1.5h = 57px  |  3h = 114px  (총 8h×38=304px)
+
+    Sidebar open (showSidebar=true):
+      win-body inner 598px → gap 24px → sidebar 260px → main 314px
+      dayarea: 314-40 = 274px → each day 54.8px → block ~47px wide
+      block: left = dayIdx*20% + 4px   width = 20% - 8px  (mx-1, auto-scale)
+  -->
+  <div class="mockup-wrap">
+
+    <!-- ══ Header: drag-area px-6 py-3 ══════════════════ -->
+    <div class="tbar">
+      <div class="tbar-l">
+
+        <!-- Hamburger: w-5 h-5 fill-zinc-400, SVG from App.jsx -->
+        <button class="tbar-ham">
+          <svg viewBox="0 0 24 24">
+            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+          </svg>
+        </button>
+
+        <!-- Title group -->
+        <div class="tbar-tgroup">
+          <div class="tbar-trow">
+            <!-- text-xl font-black tracking-tighter -->
+            <span class="tbar-title">2026-1</span>
+            <!-- Edit btn: w-3 h-3 SVG from App.jsx -->
+            <button class="tbar-edit">
+              <svg viewBox="0 0 24 24">
+                <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
+              </svg>
+            </button>
+            <!-- PIN badge: text-[9px] px-1.5 py-0.5 -->
+            <span class="tbar-pin">PIN</span>
+          </div>
+          <!-- Date: text-[10px] text-zinc-500 font-bold mt-0.5 -->
+          <span class="tbar-date">2026년 2월 25일 (수)</span>
+        </div>
+      </div>
+
+      <!-- Right buttons: gap-3 = 12px -->
+      <div class="tbar-r">
+        <!-- RESET: bg-white border-zinc-200 text-zinc-400 h-[30px] px-2.5 -->
+        <button class="tbtn tb-reset">RESET</button>
+        <!-- AUTO ON: themeColor bg, text-white h-[30px] -->
+        <button class="tbtn tb-auto">AUTO ON</button>
+        <!-- Settings: h-[30px] w-[30px] ⚙️ emoji (as in real app) -->
+        <button class="tbtn tb-set">⚙️</button>
+        <!-- SYNC: bg-zinc-800 text-white px-3.5 shadow-md text-[10px] -->
+        <button class="tbtn tb-sync">SYNC</button>
+        <!-- MINI: font-black h-[30px] -->
+        <button class="tbtn tb-mini">⊟ MINI</button>
+        <!-- Window controls: gap-3=12px ml-1.5=6px, w-3 h-3 = 12px rounded-full -->
+        <div class="tbar-ctrls">
+          <!-- minimize: themeStrong color -->
+          <span class="tbar-ctrl" style="background:var(--b0)"></span>
+          <!-- close: bg-gray-400 border-gray-300 -->
+          <span class="tbar-ctrl" style="background:#9ca3af;border:1px solid #d1d5db"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Content: flex-1 flex px-6 gap-6, showSidebar=true ══════ -->
+    <!-- pt-3 pb-3 px-6 → padding: 12px 24px; gap-6 → 24px         -->
+    <div class="win-body">
+      <div class="win-main">
+
+        <!-- Timetable: h-full rounded-xl shadow-sm border border-gray-100 -->
+        <div class="tt-wrap">
+
+          <!-- Header row: 35px, gridTemplateColumns: 40px repeat(5,1fr) -->
+          <div class="tt-head">
+            <div class="tt-head-time">TIME</div>
+            <div class="tt-head-day">MON</div>
+            <div class="tt-head-day">TUE</div>
+            <div class="tt-head-day">WED</div>
+            <div class="tt-head-day">THU</div>
+            <div class="tt-head-day">FRI</div>
+          </div>
+
+          <!-- Grid body: 8h × 67px = 536px -->
+          <div class="tt-body">
+
+            <!-- Time column: font-mono text-[10px] font-bold text-gray-500 pt-1 -->
+            <div class="tt-time-col">
+              <div class="tt-time-cell">09</div>
+              <div class="tt-time-cell">10</div>
+              <div class="tt-time-cell">11</div>
+              <div class="tt-time-cell">12</div>
+              <div class="tt-time-cell">13</div>
+              <div class="tt-time-cell">14</div>
+              <div class="tt-time-cell">15</div>
+              <div class="tt-time-cell">16</div>
+            </div>
+
+            <!--
+              5-day absolute grid (DUMMY_TIMETABLE exact reproduction):
+              ─────────────────────────────────────────────────────
+              Block positions (38px/hr, start=09:00):
+                계량경제학  09:00–10:30  top:1px   h:57px   TUE(col1) THU(col3)
+                미시경제학  10:30–12:00  top:57px  h:57px   MON(col0) WED(col2)
+                화폐금융론  10:00–13:00  top:38px  h:114px  FRI(col4)
+                거시경제학  13:00–14:30  top:152px h:57px   MON(col0) WED(col2)
+                경제수학    15:00–16:30  top:228px h:57px   TUE(col1) THU(col3)
+              Block margin: mx-1 → left=col*20%+4px  width=20%-8px
+              Auto-palette from #2e5bff (hue 226): --c0bg through --c4bg
+            -->
+            <div class="tt-dayarea">
+
+              <!-- 계량경제학  TUE  09:00–10:30  →  top:1 h:100 col:1 -->
+              <div class="blk" style="top:1px;left:calc(20% + 4px);width:calc(20% - 8px);height:100px;background:var(--c2bg);color:var(--c2txt)">
+                <div class="blk-top">
+                  <div class="blk-texts">
+                    <div class="blk-name">계량경제학</div>
+                    <div class="blk-info">상경관 405호</div>
+                  </div>
+                  <div class="blk-chk" style="border-color:var(--c2txt);opacity:.35"></div>
+                </div>
+                <div class="blk-time">09:00~10:30</div>
+              </div>
+
+              <!-- 계량경제학  THU  09:00–10:30  →  top:1 h:100 col:3 -->
+              <div class="blk" style="top:1px;left:calc(60% + 4px);width:calc(20% - 8px);height:100px;background:var(--c2bg);color:var(--c2txt)">
+                <div class="blk-top">
+                  <div class="blk-texts">
+                    <div class="blk-name">계량경제학</div>
+                    <div class="blk-info">상경관 405호</div>
+                  </div>
+                  <div class="blk-chk" style="border-color:var(--c2txt);opacity:.35"></div>
+                </div>
+                <div class="blk-time">09:00~10:30</div>
+              </div>
+
+              <!-- 미시경제학  MON  10:30–12:00  →  top:101 h:100 col:0 -->
+              <div class="blk" style="top:101px;left:calc(0% + 4px);width:calc(20% - 8px);height:100px;background:var(--c0bg);color:var(--c0txt)">
+                <div class="blk-top">
+                  <div class="blk-texts">
+                    <!-- flex flex-row flex-wrap items-center gap-x-1 -->
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px 3px">
+                      <span class="blk-name">미시경제학</span>
+                      <!-- memo icon: w-2 h-2 fill-current opacity-60 -->
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" style="opacity:.6;flex-shrink:0"><path d="M21 15L15 21H5C3.9 21 3 20.1 3 19V5C3 3.9 3.9 3 5 3H19C20.1 3 21 3.9 21 5V15M19 5H5V19H14V14H19V5Z"/></svg>
+                    </div>
+                    <div class="blk-info">다산관 201호</div>
+                  </div>
+                  <div class="blk-chk" style="border-color:var(--c0txt);opacity:.35"></div>
+                </div>
+                <div class="blk-time">10:30~12:00</div>
+              </div>
+
+              <!-- 미시경제학  WED  10:30–12:00  →  top:101 h:100 col:2 -->
+              <div class="blk" style="top:101px;left:calc(40% + 4px);width:calc(20% - 8px);height:100px;background:var(--c0bg);color:var(--c0txt)">
+                <div class="blk-top">
+                  <div class="blk-texts">
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px 3px">
+                      <span class="blk-name">미시경제학</span>
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" style="opacity:.6;flex-shrink:0"><path d="M21 15L15 21H5C3.9 21 3 20.1 3 19V5C3 3.9 3.9 3 5 3H19C20.1 3 21 3.9 21 5V15M19 5H5V19H14V14H19V5Z"/></svg>
+                    </div>
+                    <div class="blk-info">다산관 201호</div>
+                  </div>
+                  <div class="blk-chk" style="border-color:var(--c0txt);opacity:.35"></div>
+                </div>
+                <div class="blk-time">10:30~12:00</div>
+              </div>
+
+              <!-- 화폐금융론(세미나)  FRI  10:00–13:00  →  top:67 h:201 col:4 -->
+              <div class="blk" style="top:67px;left:calc(80% + 4px);width:calc(20% - 8px);height:201px;background:var(--c4bg);color:var(--c4txt)">
+                <div class="blk-top">
+                  <div class="blk-texts">
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px 3px">
+                      <span class="blk-name">화폐금융론(세미나)</span>
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" style="opacity:.6;flex-shrink:0"><path d="M21 15L15 21H5C3.9 21 3 20.1 3 19V5C3 3.9 3.9 3 5 3H19C20.1 3 21 3.9 21 5V15M19 5H5V19H14V14H19V5Z"/></svg>
+                    </div>
+                    <div class="blk-info">비즈니스홀 202</div>
+                  </div>
+                  <div class="blk-chk" style="border-color:var(--c4txt);opacity:.35"></div>
+                </div>
+                <div class="blk-time">10:00~13:00</div>
+              </div>
+
+              <!-- 거시경제학  MON  13:00–14:30  →  top:268 h:100 col:0 -->
+              <div class="blk" style="top:268px;left:calc(0% + 4px);width:calc(20% - 8px);height:100px;background:var(--c1bg);color:var(--c1txt)">
+                <div class="blk-top">
+                  <div class="blk-texts">
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px 3px">
+                      <span class="blk-name">거시경제학</span>
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" style="opacity:.6;flex-shrink:0"><path d="M21 15L15 21H5C3.9 21 3 20.1 3 19V5C3 3.9 3.9 3 5 3H19C20.1 3 21 3.9 21 5V15M19 5H5V19H14V14H19V5Z"/></svg>
+                    </div>
+                    <div class="blk-info">다산관 103호</div>
+                  </div>
+                  <div class="blk-chk" style="border-color:var(--c1txt);opacity:.35"></div>
+                </div>
+                <div class="blk-time">13:00~14:30</div>
+              </div>
+
+              <!-- 거시경제학  WED  13:00–14:30  →  top:268 h:100 col:2 -->
+              <div class="blk" style="top:268px;left:calc(40% + 4px);width:calc(20% - 8px);height:100px;background:var(--c1bg);color:var(--c1txt)">
+                <div class="blk-top">
+                  <div class="blk-texts">
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px 3px">
+                      <span class="blk-name">거시경제학</span>
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" style="opacity:.6;flex-shrink:0"><path d="M21 15L15 21H5C3.9 21 3 20.1 3 19V5C3 3.9 3.9 3 5 3H19C20.1 3 21 3.9 21 5V15M19 5H5V19H14V14H19V5Z"/></svg>
+                    </div>
+                    <div class="blk-info">다산관 103호</div>
+                  </div>
+                  <div class="blk-chk" style="border-color:var(--c1txt);opacity:.35"></div>
+                </div>
+                <div class="blk-time">13:00~14:30</div>
+              </div>
+
+              <!-- 경제수학  TUE  15:00–16:30  →  top:402 h:100 col:1 -->
+              <div class="blk" style="top:402px;left:calc(20% + 4px);width:calc(20% - 8px);height:100px;background:var(--c3bg);color:var(--c3txt)">
+                <div class="blk-top">
+                  <div class="blk-texts">
+                    <div class="blk-name">경제수학</div>
+                    <div class="blk-info">상경관 302호</div>
+                  </div>
+                  <div class="blk-chk" style="border-color:var(--c3txt);opacity:.35"></div>
+                </div>
+                <div class="blk-time">15:00~16:30</div>
+              </div>
+
+              <!-- 경제수학  THU  15:00–16:30  →  top:402 h:100 col:3 -->
+              <div class="blk" style="top:402px;left:calc(60% + 4px);width:calc(20% - 8px);height:100px;background:var(--c3bg);color:var(--c3txt)">
+                <div class="blk-top">
+                  <div class="blk-texts">
+                    <div class="blk-name">경제수학</div>
+                    <div class="blk-info">상경관 302호</div>
+                  </div>
+                  <div class="blk-chk" style="border-color:var(--c3txt);opacity:.35"></div>
+                </div>
+                <div class="blk-time">15:00~16:30</div>
+              </div>
+
+            </div><!-- tt-dayarea -->
+          </div><!-- tt-body -->
+        </div><!-- tt-wrap -->
+      </div><!-- win-main -->
+
+      <!--
+        ══ Sidebar: showSidebar=true ══════════════════════════════════
+        w-[260px] my-3 rounded-3xl border bg-zinc-50/90 border-zinc-200
+        shadow-[0_0_40px_rgba(0,0,0,0.05)] backdrop-blur-md
+        ──────────────────────────────────────────────────────────────
+        DUMMY_TASKS sorted (undone first, deadline asc):
+          1. 미시경제학 라그랑주 승수법 과제 제출  done:false  D-1
+          2. 계량경제학 STATA 실습 결과물 업로드   done:false  D-3
+          3. 거시경제학 IS-LM 모형 분석 레포트    done:true   D-Day
+        DUMMY_MEMOS: 미시경제학 / 거시경제학 / 화폐금융론(세미나)
+      -->
+      <div class="win-sidebar">
+        <div class="win-sb-inner">
+
+          <!-- ── Assignments card ─────────────────────────────── -->
+          <!-- p-4 rounded-2xl border bg-white border-zinc-200 shadow-sm -->
+          <div class="sb-card">
+            <!-- flex items-center justify-between mb-4 -->
+            <div class="sb-head" style="margin-bottom:16px">
+              <!-- text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] -->
+              <span class="sb-head-lbl">Assignments</span>
+              <!-- w-4 h-4 rounded-full bg-zinc-800 text-[8px] font-black text-white shadow-sm -->
+              <span class="sb-badge">2</span>
+            </div>
+
+            <!-- space-y-3 wrapper (12px between input-group and tasks) -->
+            <div style="display:flex;flex-direction:column;gap:12px">
+
+              <!-- flex flex-col gap-2 (input row + date row, 8px between) -->
+              <div style="display:flex;flex-direction:column;gap:8px">
+
+                <!-- input row: flex gap-2 -->
+                <div class="sb-inp-row">
+                  <!-- px-3 py-2 rounded-xl text-[10px] font-bold bg-zinc-100 text-zinc-500 -->
+                  <input class="sb-inp" placeholder="새로운 과제 입력..." readonly/>
+                  <!-- p-2 rounded-xl bg-zinc-800 text-white -->
+                  <button class="sb-add">
+                    <svg class="w-4 h-4" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+                    </svg>
+                  </button>
+                </div>
+
+                <!-- date + bell row: flex items-center justify-center gap-1 h-[25px] -->
+                <div class="sb-date-row">
+                  <!-- flex-1 h-full px-2 rounded-lg text-[9px] font-bold border border-zinc-200 -->
+                  <button class="sb-date-btn">
+                    <span style="font-family:monospace;font-size:9px">2026-02-26 12:00 PM</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#a1a1aa" style="flex-shrink:0">
+                      <path d="M19 19H5V8H19V19M16 1V3H8V1H6V3H5C3.89 3 3 3.89 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.89 20.1 3 19 3H18V1H16M17 12H12V17H17V12Z"/>
+                    </svg>
+                  </button>
+                  <!-- w-[32px] h-full rounded-lg border – notify=true → bg-zinc-800 text-white -->
+                  <button class="sb-bell-btn" style="background:#18181b;border-color:#3f3f46;color:#fff">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22M18 16V11C18 7.9 16.4 5.4 13.5 4.7V4C13.5 3.2 12.8 2.5 12 2.5C11.2 2.5 10.5 3.2 10.5 4V4.7C7.6 5.4 6 7.9 6 11V16L4 18V19H20V18L18 16Z"/>
+                    </svg>
+                  </button>
+                </div>
+
+              </div><!-- flex-col gap-2 -->
+
+              <!-- tasks: space-y-2 max-h-[150px] overflow-y-auto pr-1 -->
+              <!--
+                sorted: undone first, deadline asc
+                  1. 미시경제학  done:false  D-1  → color=themeStrong (#4661b9)  02/26 12:00 notify
+                  2. 계량경제학  done:false  D-2  → color=themeDesat  (#808080)  02/27 23:59 notify
+                  3. 거시경제학  done:true   D-Day→ color=themeStrong (#4661b9)  02/25 18:00 no-notify
+              -->
+              <div class="sb-tasks">
+
+                <!-- Task 1: 미시경제학  done:false  D-1 (diffDays=1 → themeStrong) -->
+                <div class="sb-task">
+                  <!-- w-3.5 h-3.5 rounded-md border border-zinc-300 bg-white -->
+                  <div class="sb-chk todo"></div>
+                  <div class="sb-task-body">
+                    <!-- text-[10px] font-bold leading-tight break-all text-zinc-700 -->
+                    <p class="sb-task-txt todo">미시경제학 라그랑주 승수법 과제 제출</p>
+                    <!-- flex items-center gap-1 -->
+                    <div class="sb-task-meta">
+                      <span class="sb-dday" style="color:var(--theme-strong)">D-1</span>
+                      <span class="sb-task-time">02/26 12:00</span>
+                      <!-- bell icon: notify=true, w-2 h-2 fill-current opacity-40 -->
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="#71717a" style="opacity:.4;flex-shrink:0"><path d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22M18 16V11C18 7.9 16.4 5.4 13.5 4.7V4C13.5 3.2 12.8 2.5 12 2.5C11.2 2.5 10.5 3.2 10.5 4V4.7C7.6 5.4 6 7.9 6 11V16L4 18V19H20V18L18 16Z"/></svg>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Task 3: 계량경제학  done:false  D-2 (diffDays=2 → themeDesaturated) -->
+                <div class="sb-task">
+                  <div class="sb-chk todo"></div>
+                  <div class="sb-task-body">
+                    <p class="sb-task-txt todo">계량경제학 STATA 실습 결과물 업로드</p>
+                    <div class="sb-task-meta">
+                      <span class="sb-dday" style="color:var(--theme-desat)">D-2</span>
+                      <span class="sb-task-time">02/27 23:59</span>
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="#71717a" style="opacity:.4;flex-shrink:0"><path d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22M18 16V11C18 7.9 16.4 5.4 13.5 4.7V4C13.5 3.2 12.8 2.5 12 2.5C11.2 2.5 10.5 3.2 10.5 4V4.7C7.6 5.4 6 7.9 6 11V16L4 18V19H20V18L18 16Z"/></svg>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Task 2: 거시경제학  done:true  D-Day (diffDays=0 → themeStrong) -->
+                <div class="sb-task">
+                  <!-- done: themeChecked bg + white checkmark -->
+                  <div class="sb-chk done">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="white">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                    </svg>
+                  </div>
+                  <div class="sb-task-body">
+                    <!-- done: text-zinc-400 -->
+                    <p class="sb-task-txt done">거시경제학 IS-LM 모형 분석 레포트</p>
+                    <div class="sb-task-meta">
+                      <span class="sb-dday" style="color:var(--theme-strong)">D-Day</span>
+                      <span class="sb-task-time">02/25 18:00</span>
+                      <!-- notify=false: no bell icon -->
+                    </div>
+                  </div>
+                </div>
+
+              </div><!-- sb-tasks -->
+            </div><!-- space-y-3 -->
+          </div><!-- Assignments card -->
+
+          <!-- ── Subject Memos card ────────────────────────────── -->
+          <!-- p-4 rounded-2xl border flex-1 flex flex-col bg-white border-zinc-200 shadow-sm -->
+          <div class="sb-card-flex">
+            <!-- h4: text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-4 -->
+            <h4 class="sb-head-lbl" style="margin-bottom:16px">Subject Memos</h4>
+
+            <!-- space-y-3 overflow-y-auto pr-1 flex-1 -->
+            <div class="sb-memos">
+
+              <!-- 미시경제학 memo -->
+              <!-- p-3 rounded-xl border border-dashed bg-zinc-50/50 border-zinc-200 -->
+              <div class="sb-memo">
+                <!-- flex justify-between items-start mb-2 -->
+                <div class="sb-memo-hdr">
+                  <!-- text-[9px] font-black text-zinc-400 uppercase tracking-tight color=themeDesaturated -->
+                  <p class="sb-memo-ttl" style="color:var(--theme-desat)">미시경제학</p>
+                  <div class="sb-memo-acts">
+                    <!-- edit: p-1 rounded-lg hover:bg-zinc-200 text-zinc-400 -->
+                    <button class="sb-memo-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="#a1a1aa"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg></button>
+                    <!-- delete: p-1 rounded-lg text-zinc-400 -->
+                    <button class="sb-memo-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="#a1a1aa"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19V4M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg></button>
+                  </div>
+                </div>
+                <!-- text-[10px] font-bold leading-relaxed break-words line-clamp-3 text-zinc-600 -->
+                <p class="sb-memo-txt">무차별곡선과 예산선 교차점 분석 중요.</p>
+              </div>
+
+              <!-- 거시경제학 memo -->
+              <div class="sb-memo">
+                <div class="sb-memo-hdr">
+                  <p class="sb-memo-ttl" style="color:var(--theme-desat)">거시경제학</p>
+                  <div class="sb-memo-acts">
+                    <button class="sb-memo-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="#a1a1aa"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg></button>
+                    <button class="sb-memo-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="#a1a1aa"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19V4M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg></button>
+                  </div>
+                </div>
+                <p class="sb-memo-txt">솔로우 성장 모델 변수 변화 확인.</p>
+              </div>
+
+              <!-- 화폐금융론(세미나) memo -->
+              <div class="sb-memo">
+                <div class="sb-memo-hdr">
+                  <p class="sb-memo-ttl" style="color:var(--theme-desat)">화폐금융론(세미나)</p>
+                  <div class="sb-memo-acts">
+                    <button class="sb-memo-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="#a1a1aa"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg></button>
+                    <button class="sb-memo-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="#a1a1aa"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19V4M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg></button>
+                  </div>
+                </div>
+                <p class="sb-memo-txt">중앙은행 금리 정책 발표 사례 연구.</p>
+              </div>
+
+            </div><!-- sb-memos -->
+          </div><!-- Subject Memos card -->
+
+        </div><!-- win-sb-inner -->
+      </div><!-- win-sidebar -->
+
+    </div><!-- win-body -->
+  </div><!-- mockup-wrap -->
+
+  <p style="margin-top:10px;font-size:11px;color:var(--z3);font-weight:500">* 실제 앱 화면 재현 · 648 × 650 px · 라이트 모드 · 데모 데이터</p>
+</section>
+
+<!-- ══ DOWNLOAD ════════════════════════════════════════ -->
+<section class="sec-dl" id="download">
+  <div class="divider"></div>
+  <p class="sec-label">Download</p>
+  <h2 class="sec-title">지금 무료로 시작하세요</h2>
+  <p class="sec-sub">설치형 또는 포터블 중 원하는 방식을 선택하세요.</p>
+
+  <div class="dl-grid">
+    <div class="dl-card primary">
+      <div class="dl-icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 8h10M7 12h6"/>
+        </svg>
+      </div>
+      <div class="dl-type">Installer</div>
+      <div class="dl-name">설치 마법사</div>
+      <p class="dl-desc">전통적인 설치 방식. 바탕화면 · 시작 메뉴 단축키가 자동 생성되고, 제어판에서 깔끔하게 제거할 수 있습니다.</p>
+      <p class="dl-meta"><strong>~77 MB</strong> &nbsp;·&nbsp; <strong>Windows x64</strong> &nbsp;·&nbsp; <strong>v1.0.0</strong></p>
+      <a href="MYTIME_Setup_v1.0.0.exe" download class="dl-btn btn-blue">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        설치 마법사 다운로드
+      </a>
+    </div>
+    <div class="dl-card">
+      <div class="dl-icon-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
+        </svg>
+      </div>
+      <div class="dl-type">Portable</div>
+      <div class="dl-name">포터블</div>
+      <p class="dl-desc">설치 없이 파일 하나로 바로 실행. 레지스트리를 건드리지 않으며 USB · 클라우드 드라이브에서 이동해 사용 가능합니다.</p>
+      <p class="dl-meta"><strong>~70 MB</strong> &nbsp;·&nbsp; <strong>Windows x64</strong> &nbsp;·&nbsp; <strong>v1.0.0</strong></p>
+      <a href="MYTIME_Portable_v1.0.0.exe" download class="dl-btn btn-line">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        포터블 다운로드
+      </a>
+    </div>
+  </div>
+
+  <p class="dl-ver">최신 버전 <strong>v1.0.0</strong> &nbsp;·&nbsp; Windows 10 64bit 이상 필요</p>
+</section>
+
+<!-- ══ FEATURES ════════════════════════════════════════ -->
+<section class="sec-feat" id="features">
+  <div class="divider"></div>
+  <p class="sec-label">Features</p>
+  <h2 class="sec-title">핵심 기능</h2>
+  <p class="sec-sub">단순한 시간표 그 이상, 대학 생활의 생산성 도구.</p>
+
+  <div class="feat-grid">
+    <div class="feat-card">
+      <div class="feat-icon">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+      </div>
+      <div class="feat-title">Everytime Sync</div>
+      <p class="feat-desc">에브리타임 URL을 붙여넣기만 하면 수업명, 시간, 강의실이 자동으로 동기화됩니다.</p>
+      <span class="feat-tag">1-Click</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+      </div>
+      <div class="feat-title">Widget Mode</div>
+      <p class="feat-desc">다른 프로그램 위에 항상 떠 있는 위젯 모드. 반투명 배경으로 작업 흐름을 유지합니다.</p>
+      <span class="feat-tag">Always On Top</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">
+        <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      </div>
+      <div class="feat-title">Smart Alerts</div>
+      <p class="feat-desc">과제 마감 D-Day를 데스크톱 알림으로 받아보세요. 중요한 일정을 절대 놓치지 않습니다.</p>
+      <span class="feat-tag">D-Day</span>
+    </div>
+  </div>
+
+  <div class="sub-grid" style="margin-top:12px">
+    <div class="sub-card"><div class="sub-title">출석 체크</div><p class="sub-desc">수업별 출석 체크 &amp; 주간 자동 리셋</p></div>
+    <div class="sub-card"><div class="sub-title">수업 메모</div><p class="sub-desc">과목별 메모 &amp; 빠른 열람</p></div>
+    <div class="sub-card"><div class="sub-title">다크 모드</div><p class="sub-desc">눈이 편한 다크 테마 지원</p></div>
+    <div class="sub-card"><div class="sub-title">커스터마이징</div><p class="sub-desc">과목별 색상 · 투명도 조절</p></div>
+  </div>
+</section>
+
+<!-- ══ REQUIREMENTS ════════════════════════════════════ -->
+<section class="sec-req" id="requirements">
+  <div class="divider"></div>
+  <p class="sec-label">System</p>
+  <h2 class="sec-title">시스템 요구사항</h2>
+  <p class="sec-sub" style="margin-bottom:32px">아래 조건을 충족하는 PC에서 최적으로 실행됩니다.</p>
+  <div class="req-table">
+    <div class="req-row"><span class="req-label">OS</span><span class="req-val">Windows 10 64bit 이상 (Windows 11 권장)</span></div>
+    <div class="req-row"><span class="req-label">Architecture</span><span class="req-val">x64 (64비트)</span></div>
+    <div class="req-row"><span class="req-label">RAM</span><span class="req-val">4 GB 이상</span></div>
+    <div class="req-row"><span class="req-label">Storage</span><span class="req-val">200 MB 이상 여유 공간</span></div>
+    <div class="req-row"><span class="req-label">Network</span><span class="req-val">에브리타임 연동 시 인터넷 필요</span></div>
+    <div class="req-row"><span class="req-label">Version</span><span class="req-val">v1.0.0 &nbsp;·&nbsp; PC 전용</span></div>
+  </div>
+</section>
+
+<!-- ══ CTA ════════════════════════════════════════════ -->
+<section class="sec-cta">
+  <div class="cta-inner">
+    <h2>지금 바로 시작하세요.</h2>
+    <p>에브리타임 시간표를 데스크톱으로 — 무료.</p>
+    <div class="cta-btns">
+      <a href="MYTIME_Setup_v1.0.0.exe" download class="dl-btn btn-blue" style="padding:12px 32px">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        설치 마법사 다운로드
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FOOTER ════════════════════════════════════════ -->
+<footer>
+  <span class="foot-logo">MYTIME</span>
+  <p class="foot-note">
+    © 2026 MYTIME &nbsp;·&nbsp; Windows PC 전용 &nbsp;·&nbsp; v1.0.0<br>
+    <span style="color:#3f3f46">문의 및 버그 리포트: </span>
+    <a href="mailto:difficem@gmail.com">difficem@gmail.com</a>
+  </p>
+</footer>
+
+</body>
+</html>
